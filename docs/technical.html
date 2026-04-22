@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Technical Design — Dr. Somno</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:    #1a2e5a;
+    --navy2:   #243d72;
+    --blue:    #3d72c4;
+    --sky:     #6aaee8;
+    --mist:    #eaf2fb;
+    --cream:   #fdfaf6;
+    --warm:    #f5f0e8;
+    --text:    #2c3350;
+    --muted:   #7a82a0;
+    --border:  #dde5f0;
+    --white:   #ffffff;
+    --mech:    #7c5c3a;
+    --elec:    #c4853d;
+    --soft:    #3d72c4;
+    --clin:    #3d9e6a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--cream);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  /* ── Nav ── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(253,250,246,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .nav-logo img {
+    height: 38px;
+    width: 38px;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+  }
+
+  .nav-logo-text {
+    font-family: 'Lora', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.01em;
+  }
+
+  .nav-logo-text span { color: var(--blue); }
+
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover,
+  .nav-links a.active { color: var(--navy); }
+
+  .hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    flex-shrink: 0;
+  }
+
+  .hamburger span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: var(--navy);
+    border-radius: 2px;
+    transition: all 0.25s ease;
+  }
+
+  .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .hamburger.open span:nth-child(2) { opacity: 0; }
+  .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  nav.collapsed { padding: 0 20px; }
+  nav.collapsed .hamburger { display: flex; }
+  nav.collapsed .nav-links {
+    display: none;
+    position: absolute;
+    top: 64px; left: 0; right: 0;
+    background: rgba(253,250,246,0.98);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 0 16px;
+    box-shadow: 0 8px 24px rgba(26,46,90,0.08);
+  }
+  nav.collapsed .nav-links.open { display: flex; }
+  nav.collapsed .nav-links li a {
+    display: block;
+    padding: 12px 24px;
+    font-size: 16px;
+    color: var(--navy);
+  }
+  nav.collapsed .nav-links li a:hover { background: var(--mist); }
+
+  /* ── Page header ── */
+  .page-header {
+    background: linear-gradient(160deg, var(--mist) 0%, var(--cream) 60%);
+    border-bottom: 1px solid var(--border);
+    padding: 64px 40px 56px;
+    text-align: center;
+  }
+
+  .page-header .kicker {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 12px;
+  }
+
+  .page-header h1 {
+    font-family: 'Lora', serif;
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 14px;
+  }
+
+  .page-header p {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 560px;
+    margin: 0 auto;
+    line-height: 1.7;
+  }
+
+  /* ── Section nav pills ── */
+  .section-tabs {
+    position: sticky;
+    top: 64px;
+    z-index: 90;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .section-tabs::-webkit-scrollbar { display: none; }
+
+  .tab-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .tab-link:hover { color: var(--navy); }
+  .tab-link.mech  { }
+  .tab-link.elec  { }
+  .tab-link.soft  { }
+  .tab-link.clin  { }
+
+  .tab-link.active.mech { color: var(--mech); border-color: var(--mech); }
+  .tab-link.active.elec { color: var(--elec); border-color: var(--elec); }
+  .tab-link.active.soft { color: var(--soft); border-color: var(--soft); }
+  .tab-link.active.clin { color: var(--clin); border-color: var(--clin); }
+
+  .tab-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Sections ── */
+  .tech-section {
+    padding: 72px 40px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 120px;
+  }
+
+  .tech-section:nth-child(even) { background: var(--white); }
+  .tech-section:nth-child(odd)  { background: var(--cream); }
+
+  .container { max-width: 960px; margin: 0 auto; }
+
+  .section-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .section-kicker .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  h2 {
+    font-family: 'Lora', serif;
+    font-size: clamp(26px, 4vw, 36px);
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+
+  .section-lead {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 640px;
+    margin-bottom: 40px;
+    line-height: 1.7;
+  }
+
+  p { color: #4a5270; margin-bottom: 14px; line-height: 1.75; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ── Cards & grids ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-top: 32px;
+  }
+
+  @media (max-width: 800px) { .card-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .card-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .card.on-cream { background: var(--white); }
+
+  .card-icon { font-size: 24px; margin-bottom: 12px; }
+
+  .card h4 {
+    font-family: 'Lora', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+
+  .card p { font-size: 13px; color: var(--muted); margin: 0; }
+
+  /* ── Two-col layout ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+
+  @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+
+  .mech-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 28px;
+  }
+
+  @media (max-width: 720px) { .mech-cards { grid-template-columns: 1fr; } }
+
+  /* ── Spec table ── */
+  .spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 24px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .spec-table th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--mist);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .spec-table td {
+    padding: 11px 16px;
+    color: #4a5270;
+    border-bottom: 1px solid rgba(221,229,240,0.6);
+    vertical-align: top;
+  }
+
+  .spec-table tr:last-child td { border-bottom: none; }
+  .spec-table td:first-child { color: var(--navy); font-weight: 600; width: 38%; }
+
+  /* ── Callout ── */
+  .callout {
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 24px 0;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .callout.info {
+    background: rgba(61,114,196,0.07);
+    border: 1px solid rgba(61,114,196,0.22);
+    color: var(--navy);
+  }
+
+  .callout.warn {
+    background: rgba(196,133,61,0.07);
+    border: 1px solid rgba(196,133,61,0.22);
+    color: #7a4a1a;
+  }
+
+  .callout.good {
+    background: rgba(61,158,106,0.07);
+    border: 1px solid rgba(61,158,106,0.22);
+    color: #1a5a38;
+  }
+
+  .callout strong { font-weight: 600; }
+
+  /* ── Steps ── */
+  .steps { display: flex; flex-direction: column; gap: 20px; margin-top: 24px; }
+
+  .step {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .step-body h4 {
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 3px;
+  }
+
+  .step-body p { font-size: 14px; color: var(--muted); margin: 0; }
+
+  /* ── Image placeholder ── */
+  .img-placeholder {
+    width: 100%;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-top: 24px;
+    overflow: hidden;
+  }
+
+  .img-placeholder img { width: 100%; height: auto; display: block; border-radius: 10px; }
+
+  /* ── Footer ── */
+  footer {
+    background: var(--navy);
+    padding: 40px;
+    text-align: center;
+    color: rgba(255,255,255,0.5);
+    font-size: 13px;
+  }
+
+  footer .footer-logo {
+    font-family: 'Lora', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+
+  footer a { color: var(--sky); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav>
+  <a class="nav-logo" href="index.html">
+    <img src="assets/logo.png" alt="Dr. Somno logo">
+    <span class="nav-logo-text">Dr.<span>Somno</span></span>
+  </a>
+  <ul class="nav-links" id="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="technical.html" class="active">Technical</a></li>
+  </ul>
+  <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ── Page Header ── -->
+<div class="page-header">
+  <div class="kicker">Deep Dive</div>
+  <h1>Technical Design</h1>
+  <p>A detailed look at the mechanical, electrical, software, and clinical foundations of the Dr. Somno respiratory monitoring device.</p>
+</div>
+
+<!-- ── Section tabs ── -->
+<div class="section-tabs">
+  <a href="#mechanical" class="tab-link mech">
+    <span class="tab-dot" style="background:#7c5c3a;"></span> Mechanical Design
+  </a>
+  <a href="#electrical" class="tab-link elec">
+    <span class="tab-dot" style="background:#c4853d;"></span> Electrical Design
+  </a>
+  <a href="#software" class="tab-link soft">
+    <span class="tab-dot" style="background:#3d72c4;"></span> Software Design
+  </a>
+  <a href="#clinical" class="tab-link clin">
+    <span class="tab-dot" style="background:#3d9e6a;"></span> Clinical Reasoning
+  </a>
+</div>
+
+<!-- ══════════════════════════════════════
+     MECHANICAL DESIGN
+══════════════════════════════════════ -->
+<section class="tech-section" id="mechanical">
+  <div class="container">
+    <div class="section-kicker" style="color: var(--mech);">
+      <span class="dot" style="background: var(--mech);"></span> Mechanical Design
+    </div>
+    <h2>Enclosure &amp; Physical Integration</h2>
+    <p class="section-lead">
+      The physical form factor of Dr. Somno is just as critical as its electronics.
+      The enclosure must couple sensors reliably to the body, protect sensitive electronics,
+      and remain comfortable enough to wear through an entire night of sleep.
+    </p>
+
+    <div class="two-col">
+      <div>
+        <p>
+          The device is housed in a custom TPU (thermoplastic polyurethane) enclosure designed
+          to be adhered to the patient's chest. TPU was selected for its flexibility and
+          skin-compatible compliance — it conforms to body contours rather than resisting them,
+          which reduces movement artifacts that would otherwise corrupt the sensor signals.
+        </p>
+        <p>
+          The enclosure also serves as the primary acoustic coupling interface for the
+          piezoelectric sensor. The TPU layer introduces a controlled level of damping that
+          filters out high-frequency mechanical noise while preserving the low-frequency
+          respiratory effort signals the MiniSense 100 is designed to capture.
+        </p>
+
+        <div class="callout info">
+          <strong>Design constraint:</strong> The TPU damping layer directly affects the
+          MiniSense 100's frequency response. This must be characterized and accounted for
+          in the signal processing calibration — it cannot be treated as a passive pass-through.
+        </div>
+      </div>
+
+      <div>
+        <div style="display: flex; justify-content: center;">
+          <img src="assets/joewearingsensor.jpeg" alt="Dr. Somno device worn on chest" style="width: 285px; height: auto; border-radius: 10px; border: 1px solid var(--border);">
+        </div>
+      </div>
+    </div>
+
+    <div class="mech-cards">
+      <div class="card on-cream">
+        <div class="card-icon">📐</div>
+        <h4>Enclosure Material — TPU</h4>
+        <p>Flexible, skin-safe, and mechanically compliant. Conforms to chest wall during sleep without rigid pressure points.</p>
+      </div>
+      <div class="card on-cream">
+        <div class="card-icon">🩹</div>
+        <h4>Attachment Method</h4>
+        <p>Medical-grade adhesive patch secures the device to the chest. Designed for single overnight use with easy removal.</p>
+      </div>
+      <div class="card on-cream">
+        <div class="card-icon">📏</div>
+        <h4>Sensor Placement</h4>
+        <p>Placement is optimized for the sternum region to maximize coupling with respiratory effort and minimize cardiac interference.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     ELECTRICAL DESIGN
+══════════════════════════════════════ -->
+<section class="tech-section" id="electrical">
+  <div class="container">
+    <div class="section-kicker" style="color: var(--elec);">
+      <span class="dot" style="background: var(--elec);"></span> Electrical Design
+    </div>
+    <h2>Hardware Architecture &amp; Power System</h2>
+    <p class="section-lead">
+      The electrical design centers on the Seeed Studio XIAO ESP32-S3 Sense, integrating
+      multi-modal sensors and a clean power supply into a compact, low-noise circuit.
+    </p>
+
+    <div class="two-col">
+      <div>
+        <p>
+          The XIAO ESP32-S3 Sense acts as the central processor, handling computation,
+          wireless communication, and audio input through its onboard PDM microphone
+          (MSM261D3526H1CPM). It features a dual-core Xtensa LX7 processor running at
+          up to 240 MHz, 8 MB of PSRAM, and 8 MB of flash — substantial resources for
+          an embedded wearable.
+        </p>
+        <p>
+          Power is supplied by a 3.7V lithium polymer battery fed through a buck converter
+          and filter capacitor, producing a stable regulated 5V rail. This clean supply is
+          critical: noise on the power rail couples directly into the analog signal chain and
+          degrades the piezoelectric sensor readings.
+        </p>
+        <p>
+          The MiniSense 100 piezoelectric sensor includes internal EMI shielding, which
+          helps reject interference from the ESP32-S3's radio and switching converter.
+          This shielding was a key selection criterion — unshielded piezo films pick up
+          significant switching noise in close proximity to a BLE radio.
+        </p>
+      </div>
+
+      <div>
+        <table class="spec-table">
+          <thead>
+            <tr><th>Component</th><th>Role &amp; Spec</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>XIAO ESP32-S3 Sense</td><td>Central MCU, dual-core LX7, 8MB PSRAM, BLE 5.0</td></tr>
+            <tr><td>MSM261D3526H1CPM</td><td>Onboard PDM microphone, 16 kHz / 16-bit audio</td></tr>
+            <tr><td>MiniSense 100</td><td>Piezo film sensor — low-freq breathing effort, EMI shielded</td></tr>
+            <tr><td>ADXL345</td><td>3-axis accelerometer, I²C (0x53), 50 Hz, motion artifact detection</td></tr>
+            <tr><td>3.7V LiPo</td><td>Primary battery, overnight capacity</td></tr>
+            <tr><td>Buck converter</td><td>3.7V → 5V regulated supply</td></tr>
+            <tr><td>MicroSD (SPI)</td><td>Primary storage — MOSI 9, MISO 8, SCK 7, CS 21</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card-grid" style="margin-top: 40px;">
+      <div class="card">
+        <div class="card-icon">🎙</div>
+        <h4>PDM Microphone — GPIO 42/41</h4>
+        <p>CLK on GPIO 42, DATA on GPIO 41. Records at 16 kHz, 16-bit mono via the I²S PDM driver. Primary source for acoustic classification.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">〰️</div>
+        <h4>Piezo — ADC GPIO 1</h4>
+        <p>MiniSense 100 on ADC1_CH0. Attenuation set to 0 dB (0–750 mV range) for maximum sensitivity to low-amplitude chest wall vibration.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📡</div>
+        <h4>Accelerometer — I²C GPIO 5/6</h4>
+        <p>ADXL345 on SDA 5, SCL 6. Address 0x53 (SDO low). Samples at 50 Hz. Used to separate body movement from respiratory events.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">💾</div>
+        <h4>MicroSD — SPI2</h4>
+        <p>All sensor data written to SD card first, before any wireless transmission — guaranteeing zero data loss regardless of BLE status.</p>
+      </div>
+    </div>
+
+    <div class="img-placeholder" style="margin-top: 32px;">
+      <img src="assets/drsomnoboard.png" alt="Dr. Somno PCB hardware">
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     SOFTWARE DESIGN
+══════════════════════════════════════ -->
+<section class="tech-section" id="software">
+  <div class="container">
+    <div class="section-kicker" style="color: var(--soft);">
+      <span class="dot" style="background: var(--soft);"></span> Software Design
+    </div>
+    <h2>Firmware, Data Pipeline &amp; Classification</h2>
+    <p class="section-lead">
+      The software spans two layers — an embedded FreeRTOS firmware on the ESP32-S3
+      that captures and stores data, and a Python analysis pipeline that classifies
+      respiratory events and generates clinical reports.
+    </p>
+
+    <div class="two-col">
+      <div>
+        <h3 style="font-family:'Lora',serif; font-size:18px; color:var(--navy); margin-bottom:12px;">Dual-Core FreeRTOS Architecture</h3>
+        <p>
+          The ESP32-S3's two independent Xtensa LX7 cores are used deliberately: Core 1
+          (APP_CPU) is dedicated to time-sensitive sensor tasks, while Core 0 (PRO_CPU)
+          manages the BLE radio stack. This isolation prevents wireless traffic spikes
+          from interrupting the audio capture loop.
+        </p>
+        <p>
+          Inter-core communication uses a FreeRTOS queue. The mic task enqueues audio
+          chunk pointers for BLE delivery on a best-effort basis — if the queue is full,
+          the frame is dropped and freed immediately. The SD card write always happens
+          first, unconditionally, so no data is ever lost to storage.
+        </p>
+
+        <div class="callout warn">
+          <strong>Why BLE audio streaming was abandoned:</strong> At 16 kHz, 16-bit mono,
+          the device needs ~133 BLE notification packets per second. Practical BLE throughput
+          caps at 60–100 pkts/sec, causing the queue to fill faster than it drains.
+          BLE is now used only for small status packets and post-session file transfer.
+        </div>
+      </div>
+
+      <div>
+        <h3 style="font-family:'Lora',serif; font-size:18px; color:var(--navy); margin-bottom:16px;">Recording Protocol</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h4>Quiet Baseline — 30s</h4>
+              <p>Establishes ambient noise floor for normalization. Label: <code>quiet</code>.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h4>Labeled Phases — 5 × 30s</h4>
+              <p>Snoring, coughing, wheezing, talking, and movement — each 30 seconds with 5s breaks.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h4>SD Card Storage</h4>
+              <p>All sensor streams written to <code>session_N.csv</code>: mic RMS, Goertzel freq bins, piezo, accelerometer XYZ.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <h4>Python Analysis</h4>
+              <p>Offline pipeline segments audio, extracts features, classifies events, and generates AHI report + spectrogram.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-family:'Lora',serif; font-size:20px; color:var(--navy); margin-top:48px; margin-bottom:16px;">Signal Processing &amp; Classification</h3>
+    <div class="card-grid">
+      <div class="card on-cream">
+        <div class="card-icon">📊</div>
+        <h4>Feature Extraction</h4>
+        <p>Per-frame features: mic RMS, spectral centroid, bandwidth, low/mid/high band energy ratios (split at 500 Hz and 1500 Hz), zero-crossing rate, and onset sharpness.</p>
+      </div>
+      <div class="card on-cream">
+        <div class="card-icon">🏷</div>
+        <h4>Rule-Based Classifier</h4>
+        <p>Coughs: high broadband energy + sharp onset. Snores: low-freq dominant, repetitive. Gasps: spike within 2s of an apnea window. Designed to be swapped for an ML model.</p>
+      </div>
+      <div class="card on-cream">
+        <div class="card-icon">🧠</div>
+        <h4>PyTorch MLP</h4>
+        <p>9-feature MLP (mic RMS, 4 Goertzel bins, piezo, accel XYZ) trained on labeled session CSVs. 6-class output: quiet, snoring, coughing, wheezing, talking, movement.</p>
+      </div>
+      <div class="card on-cream">
+        <div class="card-icon">📋</div>
+        <h4>AHI Report</h4>
+        <p>Estimates Apnea-Hypopnea Index (events/hr), longest and mean apnea durations, cough count, snore percentage, and a plain-language physician summary.</p>
+      </div>
+    </div>
+
+    <div class="img-placeholder" style="margin-top: 32px;">
+      <img src="assets/sensor_timeline.png" alt="Sensor timeline — microphone, piezo, and accelerometer data">
+    </div>
+    <div class="img-placeholder" style="margin-top: 16px;">
+      <img src="assets/demo_1_analysis.png" alt="Demo analysis — threshold and classifier output">
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     CLINICAL REASONING
+══════════════════════════════════════ -->
+<section class="tech-section" id="clinical">
+  <div class="container">
+    <div class="section-kicker" style="color: var(--clin);">
+      <span class="dot" style="background: var(--clin);"></span> Clinical Reasoning
+    </div>
+    <h2>Why This Approach is Clinically Meaningful</h2>
+    <p class="section-lead">
+      Every design decision — from sensor selection to report format — is grounded in
+      how sleep-disordered breathing is actually diagnosed and what physicians need to
+      act on a finding.
+    </p>
+
+    <div class="two-col">
+      <div>
+        <p>
+          The gold standard for diagnosing obstructive sleep apnea (OSA) is
+          polysomnography (PSG) — a full overnight study in a sleep lab measuring
+          EEG, EOG, EMG, airflow, SpO₂, and respiratory effort simultaneously.
+          The Apnea-Hypopnea Index (AHI) derived from PSG is the primary metric
+          physicians use: mild OSA is AHI 5–15, moderate 15–30, severe above 30
+          events per hour.
+        </p>
+        <p>
+          Dr. Somno targets the same AHI output using only acoustic and motion sensors —
+          a deliberate tradeoff between clinical completeness and accessibility. The device
+          is not intended to replace PSG, but to serve as a low-barrier screening tool
+          that flags patients who should proceed to a full study.
+        </p>
+      </div>
+
+      <div>
+        <div class="callout good">
+          <strong>Clinical positioning:</strong> Dr. Somno is a Type IV home sleep apnea
+          test (HSAT) analog — a category that includes simple pulse oximeters and
+          single-channel recorders. These are already accepted by many insurers and
+          physicians for initial OSA screening.
+        </div>
+      </div>
+    </div>
+
+    <div class="mech-cards">
+      <div class="card on-cream">
+        <div class="card-icon">🫁</div>
+        <h4>Why acoustic sensing?</h4>
+        <p>Snoring, wheezing, coughing, and the silence of apnea all have distinct acoustic signatures. A well-placed microphone captures the complete respiratory sound picture without requiring airflow cannulas or effort belts.</p>
+      </div>
+      <div class="card on-cream">
+        <div class="card-icon">📉</div>
+        <h4>Why piezo + accelerometer?</h4>
+        <p>Acoustic signals alone can be confounded by movement noise. The piezo measures chest wall vibration and the accelerometer provides body position/movement context — together they help separate true respiratory events from artifact.</p>
+      </div>
+      <div class="card on-cream">
+        <div class="card-icon">👨‍⚕️</div>
+        <h4>Physician-readable output</h4>
+        <p>The report uses standard clinical language — AHI, event duration, event type — that maps directly to what a pulmonologist or respiratory therapist expects from a sleep study summary.</p>
+      </div>
+    </div>
+
+    <table class="spec-table" style="margin-top: 40px;">
+      <thead>
+        <tr><th>Event Type</th><th>Clinical Significance</th><th>Detection Method</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Apnea</td>
+          <td>Cessation of breathing &gt;10s — primary OSA indicator; contributes directly to AHI</td>
+          <td>Silence window in mic RMS + flat piezo signal</td>
+        </tr>
+        <tr>
+          <td>Hypopnea</td>
+          <td>Partial airflow reduction — counts toward AHI with arousal or SpO₂ drop</td>
+          <td>Reduced mic energy + reduced piezo amplitude</td>
+        </tr>
+        <tr>
+          <td>Snoring</td>
+          <td>Indicates partial airway obstruction; marker for OSA risk</td>
+          <td>Low-freq (100–500 Hz) dominant, repetitive pattern</td>
+        </tr>
+        <tr>
+          <td>Wheezing</td>
+          <td>Suggests bronchospasm or airway narrowing; relevant for asthma/COPD</td>
+          <td>High 500 Hz Goertzel bin amplitude (~276 avg in test data)</td>
+        </tr>
+        <tr>
+          <td>Coughing</td>
+          <td>Repeated coughing during sleep may indicate GERD, postnasal drip, or asthma</td>
+          <td>Broadband spike, sharp onset, high zero-crossing rate</td>
+        </tr>
+        <tr>
+          <td>Movement</td>
+          <td>Frequent arousals disrupt sleep architecture; correlates with PLM disorder</td>
+          <td>Accelerometer magnitude std &gt;0.05 + piezo spike (~5× baseline)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-logo">Dr. Somno</div>
+  <p>Senior Capstone Design &nbsp;·&nbsp; Respiratory Diagnosis Device</p>
+  <p style="margin-top: 8px;">
+    <a href="https://github.com/odfairlamb/dr-somno.io" target="_blank">GitHub</a>
+    &nbsp;·&nbsp; Research prototype — not a medical device.
+  </p>
+</footer>
+
+<script>
+  const nav = document.querySelector('nav');
+  const hamburger = document.getElementById('hamburger');
+  const navLinks = document.getElementById('nav-links');
+
+  function checkNav() {
+    nav.classList.remove('collapsed');
+    const overflowing = navLinks.scrollWidth > nav.clientWidth - nav.querySelector('.nav-logo').offsetWidth - 80;
+    if (overflowing) nav.classList.add('collapsed');
+  }
+
+  hamburger.addEventListener('click', () => {
+    hamburger.classList.toggle('open');
+    navLinks.classList.toggle('open');
+  });
+
+  navLinks.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      hamburger.classList.remove('open');
+      navLinks.classList.remove('open');
+    });
+  });
+
+  new ResizeObserver(checkNav).observe(nav);
+  checkNav();
+
+  // Highlight active tab on scroll
+  const sections = ['mechanical','electrical','software','clinical'];
+  const tabs = document.querySelectorAll('.tab-link');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        tabs.forEach(t => t.classList.remove('active'));
+        const active = document.querySelector(`.tab-link[href="#${e.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-128px 0px -60% 0px', threshold: 0 });
+
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+</script>
+
+</body>
+</html>
